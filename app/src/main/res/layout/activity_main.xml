@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".MainActivity"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical"
+    android:id="@+id/experiment">
+<ScrollView
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    >
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="@dimen/activity_horizontal_margin"
+        android:paddingRight="@dimen/activity_horizontal_margin"
+        android:paddingTop="@dimen/activity_vertical_margin"
+        android:paddingBottom="@dimen/activity_vertical_margin"
+        android:orientation="vertical"
+        >
+        <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:id="@+id/wrappertop">
+            <TextView
+                android:id="@+id/guide"
+                android:text="@string/guide"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textSize="24sp"
+                android:textIsSelectable="false"
+                android:textStyle="bold"
+                android:typeface="monospace" />
+        </RelativeLayout>
+        <TextView
+            android:id="@+id/status"
+            android:text="@string/status"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/wrappertop"
+            android:gravity="center"
+            android:textSize="@dimen/font_small"
+            android:layout_marginBottom="10dp"
+            android:minLines="3"/>
+            <!--Hardware limitation takes 3 lines-->
+        <TextView
+            android:layout_marginTop="10dp"
+            android:id="@+id/info"
+            android:text=""
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/status"
+            android:minLines="2"/>
+            <!--ID and new line-->
+        <TextView
+            android:layout_marginTop="10dp"
+            android:id="@+id/safe_content"
+            android:text=""
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/info"
+            android:minLines="2"
+            android:textStyle="bold"
+            android:textSize="26sp"
+            android:gravity="center"/>
+        <!--Safe content takes about 2 lines-->
+        <TextView
+            android:layout_marginTop="10dp"
+            android:id="@+id/safe_content_extra"
+            android:text=""
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/safe_content"
+            android:minLines="2"/>
+        <!--Safe created date takes about 2 lines-->
+        <LinearLayout
+            android:id="@+id/buttonwrapper"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_below="@id/safe_content_extra"
+            android:gravity="center_horizontal"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            >
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/button_modify"
+                android:id="@+id/button"
+                android:visibility="invisible"/>
+
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/button_leave"
+                android:id="@+id/leave"
+                android:visibility="invisible"/>
+        </LinearLayout>
+        <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_alignParentBottom="true"
+            android:id="@+id/wrapper"
+            android:layout_below="@id/buttonwrapper">
+            <!--android:layout_marginTop="10dp"-->
+            <TextView
+                android:id="@+id/warning"
+                android:text="@string/warning"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:textSize="@dimen/font_small" />
+            <TextView
+                android:layout_marginTop="10dp"
+                android:id="@+id/credit"
+                android:text="@string/credit"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:layout_below="@id/warning"
+                android:textSize="@dimen/font_small" />
+            <TextView
+                android:layout_marginTop="10dp"
+                android:id="@+id/disclaimer"
+                android:text="@string/disclaimer"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:layout_below="@id/credit"
+                android:textSize="@dimen/font_small" />
+        </RelativeLayout>
+
+        <!--<EditText-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:id="@+id/editText"-->
+        <!--android:layout_below="@+id/info"-->
+        <!--android:layout_centerHorizontal="true"-->
+        <!--android:visibility="invisible"/>-->
+    </RelativeLayout>
+</ScrollView>
+</LinearLayout>

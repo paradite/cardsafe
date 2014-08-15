@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Card Safe</string>
+    <string name="status">Tap your card to open to the safe</string>
+    <string name="guide">Your Card is the \"KEY\"</string>
+    <string name="action_settings">Settings</string>
+    <string name="info">Your matriculation card Info will be shown here.</string>
+    <string name="warning">        Warning:\n
+        Please use this app at your own risks\n
+        The dev is not responsible for any consequences directly or indirectly resulted from using this app</string>
+    <string name="credit">        Developed by Zhu Liang for personal uses only</string>
+    <string name="disclaimer">Cards with confirmed support:\n
+        NUS Matric Card, DBS Debit Card, OCBC Debit Card
+    </string>
+    <string name="title_activity_base">BaseActivity</string>
+    <string name="button_modify">Modify the safe</string>
+    <string name="button_leave">Leave the safe</string>
+
+    <!--Safe related-->
+    <string name="new_safe_title">Set up new Safe</string>
+    <string name="modify_safe_title">Modify the Safe</string>
+    <string name="safe_title">Title eg. IVLE/NUSNET/XXX Bank</string>
+    <string name="content_title">Passwords/PINs to link with this card</string>
+
+</resources>
