@@ -2,17 +2,14 @@ package thack.ac.cardsafe;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteException;
-import android.graphics.Bitmap;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
@@ -25,29 +22,33 @@ import android.nfc.tech.NfcA;
 import android.nfc.tech.NfcB;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.text.InputFilter;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.HashMap;
+import java.util.Date;
+import java.util.TimeZone;
 
 
 public class MainActivity extends BaseActivity {
 
+    final MainActivity self = this;
     private BroadcastReceiver receiver;
     private IntentFilter filter;
+
+    //Boolean to track if a delete has been perform
+    boolean deleted = false;
 
     // Limit on length of user inputs
     int maxLengthTitle = 20;
@@ -63,18 +64,18 @@ public class MainActivity extends BaseActivity {
             "Success! However... \n" +
             "Due to hardware limitations,\n" +
             "Only partial ID(MAY NOT be unique) can be read.";
-    private final String textID = "Card UID:\n";
-    private final String textDate = "\nDate created:\n";
+    private final String textID = "Card UID: ";
+    private final String textDate = "\nDate created: ";
     private final String textRange = "\n" +
             "Range of possible manufactured dates:\n";
     private final String textAdditional = "Additional NfcA data:\n";
-    private final String textIncomplete = "Reading was incomplete. Please do not remove the card.";
+    public final String textIncomplete = "Reading was incomplete. Please do not remove the card.";
     private final String textReading = "Reading data from the card...";
     private final String textAuth = "Trying to authenticate...";
     private final String textInvalid = "Invalid card.";
     private final String textMatric = "Matric card detected.";
     private final String textBankCard = "Please take care of your Bank card.";
-    private final String textErrorReading = "Sorry, this card is not supported.";
+    public final String textErrorReading = "Sorry, this card is not supported.";
     private final String textHardwareFailed = "Sorry, your device does not support the NFC technology used in matric card.";
     private final String textNamePre = "";
 
@@ -95,22 +96,26 @@ public class MainActivity extends BaseActivity {
     private TextView mInfoView;
     private TextView mContentView;
     private TextView mExtraView;
-    private TextView mStatusView;
+    public TextView mStatusView;
     private Button mButton;
     private Button mLeave;
 //    private EditText mEditText;
     private NfcAdapter mNfcAdapter;
 
-    private static final byte[] HEX_CHAR_TABLE = {(byte) '0', (byte) '1',
-            (byte) '2', (byte) '3', (byte) '4', (byte) '5', (byte) '6',
-            (byte) '7', (byte) '8', (byte) '9', (byte) 'A', (byte) 'B',
-            (byte) 'C', (byte) 'D', (byte) 'E', (byte) 'F'};
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        final MainActivity self = this;
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Set up NFC Adapter
+        mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
+
+        if (mNfcAdapter == null) {
+            // Stop here, we definitely need NFC
+            Toast.makeText(this, "This device doesn't support NFC.", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
 
         //Get resources
         TITLE_HINT = getResources().getString(R.string.safe_title);
@@ -122,6 +127,14 @@ public class MainActivity extends BaseActivity {
         mStatusView = (TextView) findViewById(R.id.status);
         mButton = (Button) findViewById(R.id.button);
         mLeave = (Button) findViewById(R.id.leave);
+
+        //Set the default texts
+        if (!mNfcAdapter.isEnabled()) {
+            mStatusView.setText("NFC is disabled. Please enable it in the settings.");
+        }
+        mContentView.setText(R.string.status);
+
+        // Listeners
         mButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -131,25 +144,16 @@ public class MainActivity extends BaseActivity {
                 alert.setTitle(getResources().getString(R.string.modify_safe_title));
 
                 // Set an EditText view to get user input
-                final EditText mEditTextName = new EditText(self);
-                mEditTextName.setText(name);
-                final EditText mEditTextContent = new EditText(self);
-                mEditTextContent.setText(content);
+                final EditText mEditTextTitle = AlertDialogHelper.getEditTextWithText(self, name, maxLengthTitle);
+                final EditText mEditTextContent = AlertDialogHelper.getEditTextWithText(self, content, maxLengthContent);
 
-                mEditTextName.setFilters(new InputFilter[] {new InputFilter.LengthFilter(maxLengthTitle)});
-                mEditTextContent.setFilters(new InputFilter[] {new InputFilter.LengthFilter(maxLengthContent)});
+                AlertDialogHelper.setDialogView(self, alert, mEditTextTitle, mEditTextContent);
 
-                LinearLayout ll=new LinearLayout(self);
-                ll.setOrientation(LinearLayout.VERTICAL);
-                ll.addView(mEditTextName);
-                ll.addView(mEditTextContent);
-                alert.setView(ll);
-
-                alert.setPositiveButton("Edit", new DialogInterface.OnClickListener() {
+                alert.setPositiveButton("Save", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
-                        String name = mEditTextName.getText().toString();
+                        String name = mEditTextTitle.getText().toString();
                         String content = mEditTextContent.getText().toString();
-                        insertDataIntoDatabase(db, CardID, name, content);
+                        DataBaseHelper.insertDataIntoDatabase(db, CardID, name, content);
                         db.close();
                         QueryDataBase(CardID);
                         mContentView.invalidate();
@@ -162,36 +166,11 @@ public class MainActivity extends BaseActivity {
                 alert.setNeutralButton("Delete", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
                         //Confirmation Required
-                        DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                switch (which){
-                                    case DialogInterface.BUTTON_POSITIVE:
-                                        //Yes button clicked
-                                        db.delete(DATABASE_TABLE, KEY_ID + "=?", new String[] { CardID });
-                                        db.close();
-                                        QueryDataBase(CardID);
-                                        mContentView.invalidate();
-                                        mExtraView.invalidate();
-                                        self.recreate();
-                                        break;
-
-                                    case DialogInterface.BUTTON_NEGATIVE:
-                                        //No button clicked
-                                        db.close();
-                                        break;
-                                }
-                            }
-                        };
+                        DialogInterface.OnClickListener dialogClickListenerRealDelete = new OnClickListenerRealDelete();
 
                         AlertDialog.Builder builder = new AlertDialog.Builder(self);
-                        builder.setMessage("Are you sure about deleting?").setPositiveButton("Yes", dialogClickListener)
-                                .setNegativeButton("No", dialogClickListener).show();
-//                        db.delete(DATABASE_TABLE, KEY_ID + "=?", new String[] { CardID });
-//                        db.close();
-//                        QueryDataBase(CardID);
-//                        mContentView.invalidate();
-//                        mExtraView.invalidate();
+                        builder.setMessage("Are you sure about deleting?").setPositiveButton("Yes", dialogClickListenerRealDelete)
+                                .setNegativeButton("No", dialogClickListenerRealDelete).show();
                     }
                 });
 
@@ -215,22 +194,8 @@ public class MainActivity extends BaseActivity {
             }
         });
 
-        mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
-        if (mNfcAdapter == null) {
-            // Stop here, we definitely need NFC
-            Toast.makeText(this, "This device doesn't support NFC.", Toast.LENGTH_LONG).show();
-            finish();
-            return;
-
-        }
-
-        if (!mNfcAdapter.isEnabled()) {
-            mStatusView.setText("NFC is disabled. Please enable it in the settings.");
-        } else {
-            mStatusView.setText(R.string.status);
-        }
-
+        // Handling of intent
         filter = new IntentFilter(NfcAdapter.ACTION_ADAPTER_STATE_CHANGED);
         receiver = new BroadcastReceiver() {
 
@@ -263,7 +228,13 @@ public class MainActivity extends BaseActivity {
         registerReceiver(receiver, filter);
 
         Log.d(TAG,"onCreate Card ID: " + CardID);
-        handleIntent(getIntent());
+
+        //Do not handle intent if a delete was just performed
+        if(deleted){
+            deleted = false;
+        }else{
+            handleIntent(getIntent());
+        }
     }
 
     @Override
@@ -325,7 +296,7 @@ public class MainActivity extends BaseActivity {
             String serialId = null;
             try {
                 byte[] tagId = tag.getId();
-                serialId = getHexString(tagId, tagId.length);
+                serialId = Helper.getHexString(tagId, tagId.length);
                 Log.d(TAG, "Direct Read - Serial Number: " + serialId);
             } catch (NullPointerException ex) {
                 ex.printStackTrace();
@@ -335,17 +306,14 @@ public class MainActivity extends BaseActivity {
             // Check if it is a matric card by looking at techlist
             if (Arrays.asList(techList).containsAll(Arrays.asList(tech_mfc, tech_NfcA))) {
                 // Matric card tags
-                mStatusView.setText(textMatric);
                 new MifareClassicReaderTask().execute(tag);
 //                new NfcAReaderTask().execute(tag);
             } else if (Arrays.asList(techList).containsAll(Arrays.asList(tech_IsoDep, tech_NfcB))) {
                 // Bank Card tags
-                mStatusView.setText(textBankCard);
                 new IsoDepReaderTask().execute(tag);
             } else if (Arrays.asList(techList).contains(tech_NfcA)) {
                 // Matric Card for S4, etc which do not support Mifare Classic
                 Log.d(TAG, "NfcA detected");
-                mStatusView.setText("NfcA detected");
                 new NfcAReaderTask().execute(tag);
             } else if (Arrays.asList(techList).contains(tech_Ndef)) {
                 // Ndef tags
@@ -361,6 +329,31 @@ public class MainActivity extends BaseActivity {
         } else if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(action)) {
             mStatusView.setText(textInvalid);
         }
+    }
+
+    /**
+     * Method to format the datetime from SQLDatabase to readable string
+     * @return  String of date and time for displaying
+     * @param mainActivity
+     */
+    public String formatDateTimeFromSQL(MainActivity mainActivity) {
+        DateFormat iso8601Format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Date dateTime = new Date();
+        try {
+            dateTime = iso8601Format.parse(date);
+        } catch (ParseException e) {
+            Log.e(TAG, "Parsing ISO8601 datetime failed", e);
+        }
+
+        long when = dateTime.getTime();
+        int flags = 0;
+        flags |= android.text.format.DateUtils.FORMAT_SHOW_TIME;
+        flags |= android.text.format.DateUtils.FORMAT_SHOW_DATE;
+        flags |= android.text.format.DateUtils.FORMAT_ABBREV_MONTH;
+        flags |= android.text.format.DateUtils.FORMAT_SHOW_YEAR;
+
+        return android.text.format.DateUtils.formatDateTime(mainActivity,
+                when + TimeZone.getDefault().getOffset(when), flags);
     }
 
     /**
@@ -442,7 +435,7 @@ public class MainActivity extends BaseActivity {
             if (cardData == null || cardData.equals("")){
                 // Authorization failed
                 byte[] idbtye = tag.getId();
-                String UID = getHexString(idbtye, idbtye.length);
+                String UID = Helper.getHexString(idbtye, idbtye.length);
                 Log.d(TAG, "isoDep UID: " + UID);
                 if(UID.length()>=8){
                     // Reasonable length for UID
@@ -460,8 +453,6 @@ public class MainActivity extends BaseActivity {
                 if(result.equals("Error")){
                     mStatusView.setText(textErrorReading);
                 }else{
-                    mStatusView.setText(textSuccess);
-                    mInfoView.setText(textID + result);
                     QueryDataBase(result);
                 }
             } else {
@@ -509,7 +500,7 @@ public class MainActivity extends BaseActivity {
 //                return null;
 //            }
             byte[] idbtye = tag.getId();
-            String UID = getHexString(idbtye, idbtye.length);
+            String UID = Helper.getHexString(idbtye, idbtye.length);
             if(UID.length()>=8){
                 // Reasonable length for UID
                 cardData = UID;
@@ -524,9 +515,6 @@ public class MainActivity extends BaseActivity {
                 if(result.length() == 0 || result.equals("")){
                     mStatusView.setText(textHardwareFailed);
                 } else{
-                    mStatusView.setText(textSuccessUIDWarning);
-                    mInfoView.setText(textID + result);
-//                  mExtraView.setText(textDate + result.date);
                     QueryDataBase(result);
                 }
             } else {
@@ -611,7 +599,7 @@ public class MainActivity extends BaseActivity {
                             // 6.3) Read the block
                             data = mfc.readBlock(bIndex);
                             // 7) Convert the data into a string from Hex format.
-                            newString = getHexString(data, data.length);
+                            newString = Helper.getHexString(data, data.length);
                             int len = newString.length();
                             // Concatenate only if new string is different
                             if (!newString.equals(oldString)) {
@@ -638,7 +626,7 @@ public class MainActivity extends BaseActivity {
 //                        return "Authentication failed";
                     }
                 }
-                date = getDate(week, year);
+                date = Helper.getDate(week, year);
                 mfc.close();
             } catch (IOException e) {
                 Log.e(TAG, "Card Removed.");
@@ -651,7 +639,7 @@ public class MainActivity extends BaseActivity {
                 return null;
             }
             byte[] idbtye = tag.getId();
-            String UID = getHexString(idbtye, idbtye.length);
+            String UID = Helper.getHexString(idbtye, idbtye.length);
             Log.d(TAG, "cardData: " + cardData);
             Log.d(TAG, "UID     : " + UID);
             return new Pair(UID, date);
@@ -661,9 +649,6 @@ public class MainActivity extends BaseActivity {
         protected void onPostExecute(Pair result) {
 //            Log.e(TAG, result.id);
             if (result != null) {
-                mStatusView.setText(textSuccess);
-                mInfoView.setText(textID + result.id);
-//                mExtraView.setText(textDate + result.date);
                 QueryDataBase(result.id);
             } else {
                 mStatusView.setText(textIncomplete);
@@ -677,7 +662,6 @@ public class MainActivity extends BaseActivity {
      * @return      null
      */
     private String QueryDataBase(String id){
-        Log.d(TAG, "Card UID: " + id);
 
         //Connect with the database and read data
         db = (new DataBaseHelper(getApplicationContext())).getWritableDatabase();
@@ -685,6 +669,11 @@ public class MainActivity extends BaseActivity {
         CardID = id;
         if(cursor!=null && cursor.getCount()>0){
             // Found data stored
+
+            //Set the Status and ID textview
+            mStatusView.setText(textSuccess);
+            mInfoView.setText(textID + id);
+
             // looping through all items and add info to the views
             cursor.moveToFirst();
             while (!cursor.isAfterLast()) {
@@ -692,13 +681,16 @@ public class MainActivity extends BaseActivity {
                 name = cursor.getString(cursor.getColumnIndex("Name"));
                 content = cursor.getString(cursor.getColumnIndex("Content"));
                 date = cursor.getString(cursor.getColumnIndex("created_at"));
+                //Format the date to local timezone
+                String finalDateTime = formatDateTimeFromSQL(self);
+
                 int count = cursor.getInt(cursor.getColumnIndex("Count"));
                 String new_string = cursor.getString(cursor.getColumnIndex("New"));
                 if (new_string == null) {
                     new_string = "Old";
                 }
                 mContentView.setText(textNamePre + name + "\n" + content);
-                mExtraView.setText(textDate + date);
+                mExtraView.setText(textDate + finalDateTime);
                 mButton.setVisibility(View.VISIBLE);
                 mLeave.setVisibility(View.VISIBLE);
                 cursor.moveToNext();
@@ -710,64 +702,33 @@ public class MainActivity extends BaseActivity {
             alert.setTitle(getResources().getString(R.string.new_safe_title));
 
             // Set an EditText view to get user input
-            final EditText mEditTextName = new EditText(this);
-            mEditTextName.setHint(TITLE_HINT);
-            final EditText mEditTextContent = new EditText(this);
-            mEditTextContent.setHint(CONTENT_HINT);
-            mEditTextName.setFilters(new InputFilter[] {new InputFilter.LengthFilter(maxLengthTitle)});
-            mEditTextContent.setFilters(new InputFilter[] {new InputFilter.LengthFilter(maxLengthContent)});
-            LinearLayout ll=new LinearLayout(this);
-            ll.setOrientation(LinearLayout.VERTICAL);
-            ll.addView(mEditTextName);
-            ll.addView(mEditTextContent);
-            alert.setView(ll);
+            final EditText mEditTextTitle = AlertDialogHelper.getEditTextWithHint(this, TITLE_HINT, maxLengthTitle);
+            final EditText mEditTextContent = AlertDialogHelper.getEditTextWithHint(this, CONTENT_HINT, maxLengthContent);
+            AlertDialogHelper.setDialogView(this, alert, mEditTextTitle, mEditTextContent);
 
-            alert.setPositiveButton("Save", new DialogInterface.OnClickListener() {
+            DialogInterface.OnClickListener onClickListenerSave = new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int whichButton) {
-                    String name = mEditTextName.getText().toString();
+                    String name = mEditTextTitle.getText().toString();
                     String content = mEditTextContent.getText().toString();
-                    insertDataIntoDatabase(db, CardID, name, content);
+                    DataBaseHelper.insertDataIntoDatabase(db, CardID, name, content);
                     QueryDataBase(CardID);
                     db.close();
-                    // Or: String value: input.getText().toString();
-                    // Do something with value!
+                    Toast.makeText(self, "New Card Safe set up successfully!", Toast.LENGTH_LONG).show();
                 }
-            });
+            };
+            alert.setPositiveButton("Save", onClickListenerSave);
 
-            alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            DialogInterface.OnClickListener onClickListenerCancel = new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int whichButton) {
                     db.close();
                     // Canceled.
                 }
-            });
+            };
+            alert.setNegativeButton("Cancel", onClickListenerCancel);
             alert.show();
-//            mEditText.setVisibility(View.VISIBLE);
 
         }
         return null;
-    }
-
-    /**
-     * Acutal method to insert into database
-     * @param db        SQLDatabase
-     * @param cardID    Card ID
-     * @param name      Safe name
-     * @param content   Safe content
-     */
-    private void insertDataIntoDatabase(SQLiteDatabase db, String cardID, String name, String content) {
-        //Insert data into database
-        ContentValues cv = new ContentValues();
-        cv.put("CardID", cardID);
-        cv.put("Name", name);
-        cv.put("Content", content);
-        cv.put("New", "New");
-//        Log.d(TAG, "Content:" + content);
-        try {
-            db.insertWithOnConflict("safe", "CardID", cv, SQLiteDatabase.CONFLICT_REPLACE);
-        } catch (SQLiteException exception) {
-            Log.e(TAG, "Insertion error.");
-            exception.printStackTrace();
-        }
     }
 
     /**
@@ -881,58 +842,89 @@ public class MainActivity extends BaseActivity {
         adapter.disableForegroundDispatch(activity);
     }
 
-//    @Override
-//    public boolean onCreateOptionsMenu(Menu menu) {
-//        // Inflate the menu; this adds items to the action bar if it is present.
-//        getMenuInflater().inflate(R.menu.main, menu);
-//        return true;
-//    }
-//
-//    @Override
-//    public boolean onOptionsItemSelected(MenuItem item) {
-//        // Handle action bar item clicks here. The action bar will
-//        // automatically handle clicks on the Home/Up button, so long
-//        // as you specify a parent activity in AndroidManifest.xml.
-//        int id = item.getItemId();
-//        if (id == R.id.action_settings) {
-//            return true;
-//        }
-//        return super.onOptionsItemSelected(item);
-//    }
+    private class OnClickListenerRealDelete implements DialogInterface.OnClickListener {
+        @Override
+        public void onClick(DialogInterface dialog, int which) {
+            switch (which){
+                case DialogInterface.BUTTON_POSITIVE:
+                    //Yes button clicked
+                    db.delete(DATABASE_TABLE, KEY_ID + "=?", new String[] { CardID });
+                    db.close();
+                    //Notify user about deletion
+                    Toast.makeText(self, "Card Safe deleted!", Toast.LENGTH_LONG).show();
 
-    private static String getHexString(byte[] raw, int len) {
-        byte[] hex = new byte[2 * len];
-        int index = 0;
-        int pos = 0;
+                    // Set the deleted boolean to true so that intent is not handled again
+                    deleted = true;
+                    self.recreate();
 
-        for (byte b : raw) {
-            if (pos >= len)
-                break;
+                    break;
 
-            pos++;
-            int v = b & 0xFF;
-            hex[index++] = HEX_CHAR_TABLE[v >>> 4];
-            hex[index++] = HEX_CHAR_TABLE[v & 0xF];
-//            Log.e("getHexString", "raw byte: " + b + " v: " + v + " converted: " + HEX_CHAR_TABLE[v >>> 4] + " & " + HEX_CHAR_TABLE[v & 0xF]);
+                case DialogInterface.BUTTON_NEGATIVE:
+                    //No button clicked
+                    db.close();
+                    break;
+            }
         }
-
-        return new String(hex);
     }
 
-    String getDate(int week, int year) {
-        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy");
-        Calendar cal = Calendar.getInstance();
-//        Log.i(TAG, sdf.format(cal.getTime()));
-        cal.set(Calendar.YEAR, year);
-//        Log.i(TAG, sdf.format(cal.getTime()));
-        cal.set(Calendar.WEEK_OF_YEAR, week);
-//        Log.i(TAG, sdf.format(cal.getTime()));
-        cal.set(Calendar.DAY_OF_WEEK, 1);
-//        Log.i(TAG, sdf.format(cal.getTime()));
-        String start = sdf.format(cal.getTime());
-        cal.set(Calendar.DAY_OF_WEEK, 7);
-//        Log.i(TAG, sdf.format(cal.getTime()));
-        String end = sdf.format(cal.getTime());
-        return start + " to " + end;
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
     }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+        if (id == R.id.action_about) {
+            AlertDialog.Builder alert = new AlertDialog.Builder(self);
+            alert.setTitle(getResources().getString(R.string.action_about));
+            String credit = getResources().getString(R.string.credit);
+            String disclaimer = getResources().getString(R.string.disclaimer);
+            AlertDialogHelper.setDialogViewMessage(self, alert, credit, disclaimer);
+            alert.setNegativeButton("Okay", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    // Canceled.
+                }
+            });
+            alert.setCancelable(true);
+            alert.show();
+            return true;
+        }else if(id == R.id.action_settings){
+            AlertDialog.Builder alert = new AlertDialog.Builder(self);
+            alert.setTitle(getResources().getString(R.string.action_settings));
+            String settings = getResources().getString(R.string.settings);
+            AlertDialogHelper.setDialogViewMessage(self, alert, settings);
+            alert.setNegativeButton("Okay", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    // Canceled.
+                }
+            });
+            alert.setCancelable(true);
+            alert.show();
+            return true;
+        }else if(id == R.id.action_howto){
+            AlertDialog.Builder alert = new AlertDialog.Builder(self);
+            alert.setTitle(getResources().getString(R.string.action_howto));
+            String how_to = getResources().getString(R.string.howto);
+            AlertDialogHelper.setDialogViewMessage(self, alert, how_to);
+            alert.setNegativeButton("Okay", new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+                    // Canceled.
+                }
+            });
+            alert.setCancelable(true);
+//            alert.show();
+            Dialog d = alert.create();
+            d.show();
+            TextView msgTxt = (TextView) d.findViewById(android.R.id.message);
+            msgTxt.setTextSize(14);
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
 }

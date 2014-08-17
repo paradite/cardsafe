@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -42,6 +43,29 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         this.context = context;
     }
 
+    /**
+     * Acutal method to insert into database
+     * @param db        SQLDatabase
+     * @param cardID    Card ID
+     * @param name      Safe name
+     * @param content   Safe content
+     */
+    public static void insertDataIntoDatabase(SQLiteDatabase db, String cardID, String name, String content) {
+        //Insert data into database
+        ContentValues cv = new ContentValues();
+        cv.put("CardID", cardID);
+        cv.put("Name", name);
+        cv.put("Content", content);
+        cv.put("New", "New");
+//        Log.d(TAG, "Content:" + content);
+        try {
+            db.insertWithOnConflict("safe", "CardID", cv, SQLiteDatabase.CONFLICT_REPLACE);
+        } catch (SQLiteException exception) {
+            Log.e("Database", "Insertion error.");
+            exception.printStackTrace();
+        }
+    }
+
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE safe(" +
@@ -49,7 +73,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                 "CardID INTEGER UNIQUE, " +
                 "Name TEXT," +
                 "Content TEXT, " +
-                "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, " +
+                "created_at DATETIME DEFAULT (datetime('now','localtime')), " +
                 "Count INTEGER DEFAULT 0," +
                 "New TEXT);");
     }

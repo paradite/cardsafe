@@ -1,6 +1,8 @@
 package thack.ac.cardsafe;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.view.Menu;
@@ -8,7 +10,7 @@ import android.view.MenuItem;
 import thack.ac.cardsafe.R;
 
 public class BaseActivity extends Activity {
-
+    private BaseActivity self = this;
     public final String TAG = ((Object) this).getClass().getSimpleName();
     SQLiteDatabase db;
 
@@ -19,10 +21,8 @@ public class BaseActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+
     }
-
-
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

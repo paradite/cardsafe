@@ -37,15 +37,25 @@
         </RelativeLayout>
         <TextView
             android:id="@+id/status"
-            android:text="@string/status"
+            android:text=""
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/wrappertop"
             android:gravity="center"
             android:textSize="@dimen/font_small"
             android:layout_marginBottom="10dp"
-            android:minLines="3"/>
-            <!--Hardware limitation takes 3 lines-->
+            android:layout_marginTop="10dp"
+            android:minLines="1"/>
+            <!--Status is only 1 line-->
+        <LinearLayout
+            android:id="@+id/safewrapper"
+            android:layout_height="wrap_content"
+            android:layout_width="fill_parent"
+            android:layout_below="@id/status"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:orientation="vertical"
+            android:background="@color/beige">
         <TextView
             android:layout_marginTop="10dp"
             android:id="@+id/info"
@@ -53,16 +63,17 @@
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/status"
-            android:minLines="2"/>
-            <!--ID and new line-->
+            android:minLines="1"/>
+            <!--ID only 1 line-->
         <TextView
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp"
             android:id="@+id/safe_content"
             android:text=""
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/info"
-            android:minLines="2"
+            android:minLines="3"
             android:textStyle="bold"
             android:textSize="26sp"
             android:gravity="center"/>
@@ -74,13 +85,15 @@
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/safe_content"
-            android:minLines="2"/>
-        <!--Safe created date takes about 2 lines-->
+            android:minLines="1"
+            android:layout_marginBottom="10dp"/>
+        <!--Safe created date takes 1 line-->
+        </LinearLayout>
         <LinearLayout
             android:id="@+id/buttonwrapper"
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"
-            android:layout_below="@id/safe_content_extra"
+            android:layout_below="@id/safewrapper"
             android:gravity="center_horizontal"
             android:layout_centerHorizontal="true"
             android:layout_marginTop="10dp"
@@ -119,7 +132,7 @@
             <TextView
                 android:layout_marginTop="10dp"
                 android:id="@+id/credit"
-                android:text="@string/credit"
+                android:text=""
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
@@ -134,7 +147,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:gravity="center"
-                android:layout_below="@id/credit"
+                android:layout_below="@id/warning"
                 android:textSize="@dimen/font_small" />
         </RelativeLayout>
 
